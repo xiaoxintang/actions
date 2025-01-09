@@ -1,7 +1,7 @@
 name: ax3000t.yml
 on:
   schedule:
-    - cron: '0 0 0 * *'
+    - cron: '0 0 * * *'
 jobs:
   build ax3000t:
     runs-on: ubuntu-20.04
