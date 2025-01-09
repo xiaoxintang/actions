@@ -10,7 +10,10 @@ jobs:
       - name: setup env
         run: sudo bash -c 'bash <(curl -s https://build-scripts.immortalwrt.org/init_build_environment.sh)'
       - name: clone source
-        run: git clone -b openwrt-23.05 --single-branch --filter=blob:none https://github.com/immortalwrt/immortalwrt
+        run: |
+          wget https://downloads.immortalwrt.org/releases/23.05.4/targets/mediatek/filogic/immortalwrt-sdk-23.05.4-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+          tar -Jxvf immortalwrt-sdk-23.05.4-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+          mv immortalwrt-sdk-23.05.4-mediatek-filogic_gcc-12.3.0_musl.Linux-x86_64 immortalwrt
       - name: build
         run: |
           cd immortalwrt
@@ -21,3 +24,6 @@ jobs:
           make -j$(nproc)
       - name: Release
         uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./bin/packages/**/*.ipk
