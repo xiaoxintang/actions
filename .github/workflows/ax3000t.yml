@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: '0 0 * * *'
 jobs:
-  build ax3000t:
+  build_ax3000t:
     runs-on: ubuntu-20.04
     steps:
       - name: setup env
