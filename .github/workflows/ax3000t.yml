@@ -16,9 +16,8 @@ jobs:
       - name: clone source
         run: |
           wget https://downloads.openwrt.org/snapshots/targets/mediatek/filogic/openwrt-sdk-mediatek-filogic_gcc-13.3.0_musl.Linux-x86_64.tar.zst
-          zstd -d openwrt-sdk-mediatek-filogic_gcc-13.3.0_musl.Linux-x86_64.tar.zst
-          tar -Jxvf openwrt-sdk-mediatek-filogic_gcc-13.3.0_musl.Linux-x86_64.tar
-          mv 13257323077 immortalwrt
+          tar -I zstd -xvf openwrt-sdk-mediatek-filogic_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+          mv openwrt-sdk-mediatek-filogic_gcc-13.3.0_musl.Linux-x86_64 immortalwrt
       - name: build
         run: |
           cd immortalwrt
