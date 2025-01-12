@@ -1,4 +1,4 @@
-name: ax3000t.yml
+name: rockchip.yml
 on:
   workflow_dispatch:
   schedule:
