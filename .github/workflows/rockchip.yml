@@ -1,4 +1,4 @@
-name: rockchip.yml
+name: rockchip
 on:
   workflow_dispatch:
   schedule:
@@ -7,6 +7,8 @@ jobs:
   build_ax3000t:
     runs-on: ubuntu-24.04
     steps:
+      - name: checkout
+        uses: actions/checkout@v2
       - name: setup env
         run: |
           sudo apt update
@@ -14,18 +16,22 @@ jobs:
           sudo bash -c 'bash <(curl -s https://build-scripts.immortalwrt.org/init_build_environment.sh)'
       - name: clone source
         run: |
-          wget https://downloads.immortalwrt.org/releases/24.10.0-rc3/targets/rockchip/armv8/immortalwrt-sdk-24.10.0-rc3-rockchip-armv8_gcc-13.3.0_musl.Linux-x86_64.tar.zst
-          tar -I zstd -xvf immortalwrt-sdk-24.10.0-rc3-rockchip-armv8_gcc-13.3.0_musl.Linux-x86_64.tar.zst
-          mv immortalwrt-sdk-24.10.0-rc3-rockchip-armv8_gcc-13.3.0_musl.Linux-x86_64 immortalwrt
+          git clone -b openwrt-23.05 --single-branch --filter=blob:none https://github.com/immortalwrt/immortalwrt
       - name: build
         run: |
+          mv r4sconfig immortalwrt/.config
           cd immortalwrt
+          sed -i '$a src-git smpackage https://github.com/kenzok8/small-package' feeds.conf.default
           ./scripts/feeds update -a
           ./scripts/feeds install -a
           make defconfig
-          make -j1 V=s
+      - name: ssr-plus
+        run: |
+          make package/luci-app-ssr-plus/prepare
+          make package/luci-app-ssr-plus/download
+          make package/luci-app-ssr-plus/compile
       - name: Release
         uses: actions/upload-artifact@v4
         with:
           name: rockchip
-          path: ./bin/packages/**/*.ipk
+          path: ./bin/packages/**/luci/*.ipk
