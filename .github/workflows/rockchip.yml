@@ -1,0 +1,31 @@
+name: ax3000t.yml
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
+jobs:
+  build_ax3000t:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: setup env
+        run: |
+          sudo apt update
+          sudo apt upgrade -y
+          sudo bash -c 'bash <(curl -s https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+      - name: clone source
+        run: |
+          wget https://downloads.immortalwrt.org/releases/24.10.0-rc3/targets/rockchip/armv8/immortalwrt-sdk-24.10.0-rc3-rockchip-armv8_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+          tar -I zstd -xvf immortalwrt-sdk-24.10.0-rc3-rockchip-armv8_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+          mv immortalwrt-sdk-24.10.0-rc3-rockchip-armv8_gcc-13.3.0_musl.Linux-x86_64 immortalwrt
+      - name: build
+        run: |
+          cd immortalwrt
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          make defconfig
+          make -j1 V=s
+      - name: Release
+        uses: actions/upload-artifact@v4
+        with:
+          name: rockchip
+          path: ./bin/packages/**/*.ipk
