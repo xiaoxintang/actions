@@ -24,7 +24,6 @@ jobs:
           sed -i '$a src-git smpackage https://github.com/kenzok8/small-package' feeds.conf.default
           ./scripts/feeds update -a
           ./scripts/feeds install -a
-          make defconfig
       - name: ssr-plus
         run: |
           make package/luci-app-ssr-plus/prepare
