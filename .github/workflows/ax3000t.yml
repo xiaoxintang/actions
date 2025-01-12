@@ -24,10 +24,8 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
           make defconfig
-          make download -j$(nproc)
-          make -j$(nproc)
+          make -j1 V=s
       - name: Release
-        uses: softprops/action-gh-release@v2
+        uses: actions/upload-artifact@v4
         with:
-          files: |
-            ./bin/packages/**/*.ipk
+          path: ./bin/packages/**/*.ipk
