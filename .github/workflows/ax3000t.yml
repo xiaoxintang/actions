@@ -1,8 +1,8 @@
 name: ax3000t.yml
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *'
+#  schedule:
+#    - cron: '0 0 * * *'
 jobs:
   build_ax3000t:
     runs-on: ubuntu-24.04
