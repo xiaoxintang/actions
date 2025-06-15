@@ -6,7 +6,7 @@ on:
     - cron: '0 0 * * *'  # 每天 UTC 0 点运行
 
 env:
-  IMAGEBUILDER_URL: "https://downloads.immortalwrt.org/releases/24.10.1/targets/rockchip/armv8/immortalwrt-imagebuilder-24.10.1-rockchip-armv8.Linux-x86_64.tar.zst"
+  IMAGEBUILDER_URL: "https://downloads.immortalwrt.org/releases/23.05.3/targets/rockchip/armv8/immortalwrt-imagebuilder-23.05.3-rockchip-armv8.Linux-x86_64.tar.xz"
 
 jobs:
   build:
@@ -14,9 +14,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Install zstd
-        run: sudo apt-get update && sudo apt-get install -y zstd
 
       - name: Download ImageBuilder
         run: |
@@ -27,12 +24,12 @@ jobs:
             exit 1
           fi
           IMAGEBUILDER_FILE=$(basename "$IMAGEBUILDER_URL")
-          tar -I zstd -xf "$IMAGEBUILDER_FILE"
+          tar xf "$IMAGEBUILDER_FILE"
           if [ $? -ne 0 ]; then
             echo "Failed to extract imagebuilder"
             exit 1
           fi
-          cd "$(basename "$IMAGEBUILDER_FILE" .tar.zst)"
+          cd "$(basename "$IMAGEBUILDER_FILE" .tar.xz)"
 
       - name: Add custom repositories
         run: |
@@ -41,12 +38,10 @@ jobs:
 
       - name: Build firmware
         run: |
-          make -j$(nproc) \
-            PROFILE="friendlyarm_nanopi-r4s" \
+          make image PROFILE="friendlyarm_nanopi-r4s" \
             PACKAGES="luci-app-ssr-plus luci-app-homebox" \
             FILES="files/" \
-            EXTRA_IMAGE_NAME="$(date +'%Y%m%d')" \
-            V=s
+            EXTRA_IMAGE_NAME="$(date +'%Y%m%d')"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
