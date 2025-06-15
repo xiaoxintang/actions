@@ -39,18 +39,14 @@ jobs:
           echo "src-git ssrplus https://github.com/fw876/helloworld.git" >> repositories.conf
           echo "src-git homebox https://github.com/immortalwrt/luci.git" >> repositories.conf
 
-      - name: Prepare build
-        run: |
-          make download
-          make -j$(nproc) prepare
-
       - name: Build firmware
         run: |
           make -j$(nproc) \
             PROFILE="friendlyarm_nanopi-r4s" \
             PACKAGES="luci-app-ssr-plus luci-app-homebox" \
             FILES="files/" \
-            EXTRA_IMAGE_NAME="$(date +'%Y%m%d')"
+            EXTRA_IMAGE_NAME="$(date +'%Y%m%d')" \
+            V=s
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
