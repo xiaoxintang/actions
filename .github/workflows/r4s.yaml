@@ -1,0 +1,57 @@
+name: Build ImmortalWrt Firmware
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'  # 每天 UTC 0 点运行
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build firmware
+        uses: immortalwrt/actions@main
+        with:
+          target: rockchip/armv8
+          subtarget: friendlyarm_nanopi-r4s
+          profile: friendlyarm_nanopi-r4s
+          packages: |
+            luci-app-ssr-plus
+            luci-app-homebox
+          version: $(date +'%Y%m%d')
+          imagebuilder: true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: firmware
+          path: |
+            bin/targets/rockchip/armv8/*.img.gz
+            bin/targets/rockchip/armv8/*.img
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v$(date +'%Y%m%d')
+          release_name: Release $(date +'%Y-%m-%d')
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./bin/targets/rockchip/armv8/*.img.gz
+          asset_name: immortalwrt-r4s-$(date +'%Y%m%d').img.gz
+          asset_content_type: application/octet-stream 
