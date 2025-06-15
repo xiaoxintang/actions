@@ -6,7 +6,7 @@ on:
     - cron: '0 0 * * *'  # 每天 UTC 0 点运行
 
 env:
-  IMAGEBUILDER_URL: "https://downloads.openwrt.org/snapshots/targets/rockchip/armv8/openwrt-imagebuilder-rockchip-armv8.Linux-x86_64.tar.xz"
+  SDK_URL: "https://downloads.openwrt.org/releases/22.03.5/targets/rockchip/armv8/openwrt-sdk-22.03.5-rockchip-armv8_gcc-11.2.0_musl.Linux-x86_64.tar.xz"
 
 jobs:
   build:
@@ -15,62 +15,56 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download ImageBuilder
+      - name: Download SDK
         run: |
-          echo "Downloading ImageBuilder from $IMAGEBUILDER_URL"
-          wget "$IMAGEBUILDER_URL"
+          echo "Downloading SDK from $SDK_URL"
+          wget "$SDK_URL"
           if [ $? -ne 0 ]; then
-            echo "Failed to download imagebuilder"
+            echo "Failed to download SDK"
             exit 1
           fi
-          IMAGEBUILDER_FILE=$(basename "$IMAGEBUILDER_URL")
-          tar xf "$IMAGEBUILDER_FILE"
+          SDK_FILE=$(basename "$SDK_URL")
+          tar xf "$SDK_FILE"
           if [ $? -ne 0 ]; then
-            echo "Failed to extract imagebuilder"
+            echo "Failed to extract SDK"
             exit 1
           fi
-          cd "$(basename "$IMAGEBUILDER_FILE" .tar.xz)"
+          cd "$(basename "$SDK_FILE" .tar.xz)"
           echo "Current directory: $(pwd)"
           echo "Directory contents:"
           ls -la
-          echo "Checking for Makefile:"
-          find . -name "Makefile" -type f
-          echo "Checking for README:"
-          find . -name "README" -type f
-          if [ -f "README" ]; then
-            echo "README contents:"
-            cat README
-          fi
 
       - name: Add custom repositories
         run: |
-          echo "src-git ssrplus https://github.com/fw876/helloworld.git" >> repositories.conf
-          echo "src-git homebox https://github.com/immortalwrt/luci.git" >> repositories.conf
+          echo "src-git ssrplus https://github.com/fw876/helloworld.git" >> feeds.conf.default
+          echo "src-git homebox https://github.com/immortalwrt/luci.git" >> feeds.conf.default
+
+      - name: Update feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Configure build
+        run: |
+          cat > .config << EOF
+          CONFIG_TARGET_rockchip=y
+          CONFIG_TARGET_rockchip_armv8=y
+          CONFIG_TARGET_rockchip_armv8_DEVICE_friendlyarm_nanopi-r4s=y
+          CONFIG_PACKAGE_luci-app-ssr-plus=y
+          CONFIG_PACKAGE_luci-app-homebox=y
+          EOF
 
       - name: Build firmware
         run: |
-          if [ -f "Makefile" ]; then
-            echo "Makefile exists, showing contents:"
-            cat Makefile
-          else
-            echo "No Makefile found in current directory"
-            echo "Trying to find Makefile in parent directories:"
-            find .. -name "Makefile" -type f
-          fi
-          make -j$(nproc) \
-            PROFILE="friendlyarm_nanopi-r4s" \
-            PACKAGES="luci-app-ssr-plus luci-app-homebox" \
-            FILES="files/" \
-            EXTRA_IMAGE_NAME="$(date +'%Y%m%d')" \
-            V=s
+          make -j$(nproc) V=s
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: firmware
           path: |
-            */bin/targets/rockchip/armv8/*.img.gz
-            */bin/targets/rockchip/armv8/*.img
+            bin/targets/rockchip/armv8/*.img.gz
+            bin/targets/rockchip/armv8/*.img
 
       - name: Create Release
         id: create_release
@@ -89,6 +83,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./*/bin/targets/rockchip/armv8/*.img.gz
+          asset_path: ./bin/targets/rockchip/armv8/*.img.gz
           asset_name: openwrt-r4s-$(date +'%Y%m%d').img.gz
           asset_content_type: application/octet-stream 
