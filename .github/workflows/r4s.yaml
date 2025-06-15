@@ -37,18 +37,19 @@ jobs:
         run: |
           cd imagebuilder
           # Add feeds for ssr-plus and homebox
-          echo "src-git ssrplus https://github.com/fw876/helloworld.git" >> feeds.conf.default
+          echo "src-git ssrplus https://github.com/immortalwrt-collections/luci-app-ssr-plus-Jo.git" >> feeds.conf.default
           echo "src-git homebox https://github.com/sirpdboy/luci-app-homebox.git" >> feeds.conf.default
           ./scripts/feeds update -a
-          ./scripts/feeds install luci-app-ssr-plus
-          ./scripts/feeds install luci-app-homebox
+          ./scripts/feeds install -a
 
       - name: Configure and build firmware
         run: |
           cd imagebuilder
-          # Add required packages
+          # Add required packages and dependencies
           make image PROFILE=friendlyarm_nanopi-r4s \
-            PACKAGES="luci-app-ssr-plus luci-app-homebox"
+            PACKAGES="luci-app-ssr-plus luci-app-homebox \
+            dns2socks microsocks shadowsocksr-libev-ssr-local \
+            shadowsocksr-libev-ssr-redir simple-obfs" V=s
 
       - name: Prepare artifacts
         run: |
