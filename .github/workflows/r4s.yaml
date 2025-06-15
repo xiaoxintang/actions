@@ -1,4 +1,4 @@
-name: Build ImmortalWrt Firmware
+name: Build OpenWrt Firmware
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
     - cron: '0 0 * * *'  # 每天 UTC 0 点运行
 
 env:
-  IMAGEBUILDER_URL: "https://downloads.immortalwrt.org/releases/21.02.7/targets/rockchip/armv8/immortalwrt-imagebuilder-21.02.7-rockchip-armv8.Linux-x86_64.tar.xz"
+  IMAGEBUILDER_URL: "https://downloads.openwrt.org/releases/22.03.5/targets/rockchip/armv8/openwrt-imagebuilder-22.03.5-rockchip-armv8.Linux-x86_64.tar.xz"
 
 jobs:
   build:
@@ -74,5 +74,5 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./*/bin/targets/rockchip/armv8/*.img.gz
-          asset_name: immortalwrt-r4s-$(date +'%Y%m%d').img.gz
+          asset_name: openwrt-r4s-$(date +'%Y%m%d').img.gz
           asset_content_type: application/octet-stream 
