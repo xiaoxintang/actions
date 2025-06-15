@@ -10,30 +10,44 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Build firmware
-        uses: immortalwrt/actions@main
-        with:
-          target: rockchip/armv8
-          subtarget: friendlyarm_nanopi-r4s
-          profile: friendlyarm_nanopi-r4s
-          packages: |
-            luci-app-ssr-plus
-            luci-app-homebox
-          version: $(date +'%Y%m%d')
-          imagebuilder: true
+        run: |
+          git clone https://github.com/immortalwrt/immortalwrt.git
+          cd immortalwrt
+          git checkout master
+          
+          # 添加自定义软件包
+          echo "src-git ssrplus https://github.com/fw876/helloworld.git" >> feeds.conf.default
+          echo "src-git homebox https://github.com/immortalwrt/luci.git" >> feeds.conf.default
+          
+          # 更新 feeds
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          
+          # 配置构建选项
+          cat > .config << EOF
+          CONFIG_TARGET_rockchip=y
+          CONFIG_TARGET_rockchip_armv8=y
+          CONFIG_TARGET_rockchip_armv8_DEVICE_friendlyarm_nanopi-r4s=y
+          CONFIG_PACKAGE_luci-app-ssr-plus=y
+          CONFIG_PACKAGE_luci-app-homebox=y
+          EOF
+          
+          # 开始构建
+          make -j$(nproc) V=s
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: firmware
           path: |
-            bin/targets/rockchip/armv8/*.img.gz
-            bin/targets/rockchip/armv8/*.img
+            immortalwrt/bin/targets/rockchip/armv8/*.img.gz
+            immortalwrt/bin/targets/rockchip/armv8/*.img
 
       - name: Create Release
         id: create_release
@@ -52,6 +66,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./bin/targets/rockchip/armv8/*.img.gz
+          asset_path: ./immortalwrt/bin/targets/rockchip/armv8/*.img.gz
           asset_name: immortalwrt-r4s-$(date +'%Y%m%d').img.gz
           asset_content_type: application/octet-stream 
