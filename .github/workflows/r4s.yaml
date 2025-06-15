@@ -1,88 +1,100 @@
-name: Build OpenWrt Firmware
+name: Build and Release ImmortalWrt for NanoPi R4S
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *'  # 每天 UTC 0 点运行
-
-env:
-  SDK_URL: "https://downloads.openwrt.org/releases/22.03.5/targets/rockchip/armv8/openwrt-sdk-22.03.5-rockchip-armv8_gcc-11.2.0_musl.Linux-x86_64.tar.xz"
+    - cron: '0 0 * * *' # 每天 UTC 00:00 运行（北京时间 08:00）
+  push:
+    branches:
+      - main
+  workflow_dispatch: # 允许手动触发
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - name: Checkout repository
+      # 检出仓库代码
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download SDK
+      # 设置环境
+      - name: Set up environment
         run: |
-          echo "Downloading SDK from $SDK_URL"
-          wget "$SDK_URL"
-          if [ $? -ne 0 ]; then
-            echo "Failed to download SDK"
-            exit 1
-          fi
-          SDK_FILE=$(basename "$SDK_URL")
-          tar xf "$SDK_FILE"
-          if [ $? -ne 0 ]; then
-            echo "Failed to extract SDK"
-            exit 1
-          fi
-          cd "$(basename "$SDK_FILE" .tar.xz)"
-          echo "Current directory: $(pwd)"
-          echo "Directory contents:"
-          ls -la
+          sudo apt-get update
+          sudo apt-get install -y build-essential libncurses5-dev unzip gawk zlib1g-dev git
 
-      - name: Add custom repositories
+      # 下载 ImmortalWrt Image Builder
+      - name: Download Image Builder
         run: |
-          echo "src-git ssrplus https://github.com/fw876/helloworld.git" >> feeds.conf.default
-          echo "src-git homebox https://github.com/immortalwrt/luci.git" >> feeds.conf.default
+          wget https://downloads.immortalwrt.org/releases/24.10.0/targets/rockchip/armv8/immortalwrt-imagebuilder-24.10.0-rockchip-armv8.Linux-x86_64.tar.xz
+          tar -Jxf immortalwrt-imagebuilder-24.10.0-rockchip-armv8.Linux-x86_64.tar.xz
+          mv immortalwrt-imagebuilder-24.10.0-rockchip-armv8.Linux-x86_64 imagebuilder
 
-      - name: Update feeds
+      # 配置软件包
+      - name: Configure packages
         run: |
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
+          cd imagebuilder
+          echo "CONFIG_TARGET_rockchip_armv8_DEVICE_friendlyarm_nanopi-r4s=y" >> .config
+          echo "CONFIG_PACKAGE_luci=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-ssr-plus=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-homebox=y" >> .config
+          echo "CONFIG_PACKAGE_iptables=y" >> .config
+          echo "CONFIG_PACKAGE_iptables-mod-tproxy=y" >> .config
+          echo "CONFIG_PACKAGE_ipt2socks=y" >> .config
+          echo "CONFIG_PACKAGE_shadowsocks-libev-ss-local=y" >> .config
+          echo "CONFIG_PACKAGE_shadowsocksr-libev-ssr-local=y" >> .config
+          echo "CONFIG_PACKAGE_simple-obfs=y" >> .config
+          make defconfig
 
-      - name: Configure build
-        run: |
-          cat > .config << EOF
-          CONFIG_TARGET_rockchip=y
-          CONFIG_TARGET_rockchip_armv8=y
-          CONFIG_TARGET_rockchip_armv8_DEVICE_friendlyarm_nanopi-r4s=y
-          CONFIG_PACKAGE_luci-app-ssr-plus=y
-          CONFIG_PACKAGE_luci-app-homebox=y
-          EOF
-
+      # 编译固件
       - name: Build firmware
         run: |
-          make -j$(nproc) V=s
+          cd imagebuilder
+          make image PROFILE="friendlyarm_nanopi-r4s" PACKAGES="luci luci-app-ssr-plus luci-app-homebox iptables iptables-mod-tproxy ipt2socks shadowsocks-libev-ss-local shadowsocksr-libev-ssr-local simple-obfs"
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: firmware
-          path: |
-            bin/targets/rockchip/armv8/*.img.gz
-            bin/targets/rockchip/armv8/*.img
+      # 获取当前日期作为版本号
+      - name: Set version
+        id: version
+        run: echo "VERSION=$(date +%Y-%m-%d)" >> $GITHUB_ENV
 
+      # 检查是否已存在同名 Tag
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          TAG_EXISTS=$(git ls-remote --tags origin | grep "refs/tags/${{ env.VERSION }}" || true)
+          if [ -n "$TAG_EXISTS" ]; then
+            echo "Tag ${{ env.VERSION }} already exists, appending to existing release."
+            echo "TAG_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "TAG_EXISTS=false" >> $GITHUB_ENV
+          fi
+
+      # 创建 GitHub Release（如果 Tag 不存在）
       - name: Create Release
-        id: create_release
+        if: env.TAG_EXISTS == 'false'
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
-          tag_name: v$(date +'%Y%m%d')
-          release_name: Release $(date +'%Y-%m-%d')
+          tag_name: ${{ env.VERSION }}
+          release_name: Release ${{ env.VERSION }}
+          body: |
+            ImmortalWrt firmware for NanoPi R4S, built on ${{ env.VERSION }}.
+            Includes luci-app-ssr-plus and luci-app-homebox.
           draft: false
           prerelease: false
 
-      - name: Upload Release Asset
+      # 上传固件到 Release
+      - name: Upload firmware to Release
         uses: actions/upload-release-asset@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./bin/targets/rockchip/armv8/*.img.gz
-          asset_name: openwrt-r4s-$(date +'%Y%m%d').img.gz
-          asset_content_type: application/octet-stream 
+          upload_url: ${{ steps.create-release.outputs.upload_url || github.event.release.upload_url }}
+          asset_path: imagebuilder/bin/targets/rockchip/armv8/immortalwrt-24.10.0-rockchip-armv8-friendlyarm_nanopi-r4s-squashfs-sysupgrade.bin
+          asset_name: immortalwrt-nanopi-r4s-${{ env.VERSION }}.bin
+          asset_content_type: application/octet-stream
+
+      # 可选：清理工作空间
+      - name: Clean up
+        run: |
+          rm -rf imagebuilder
