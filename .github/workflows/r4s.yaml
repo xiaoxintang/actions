@@ -6,7 +6,7 @@ on:
     - cron: '0 0 * * *'  # 每天 UTC 0 点运行
 
 env:
-  IMAGEBUILDER_URL: "https://downloads.immortalwrt.org/releases/23.05.3/targets/rockchip/armv8/immortalwrt-imagebuilder-23.05.3-rockchip-armv8.Linux-x86_64.tar.xz"
+  IMAGEBUILDER_URL: "https://downloads.immortalwrt.org/releases/21.02.7/targets/rockchip/armv8/immortalwrt-imagebuilder-21.02.7-rockchip-armv8.Linux-x86_64.tar.xz"
 
 jobs:
   build:
@@ -33,10 +33,6 @@ jobs:
           echo "Current directory: $(pwd)"
           echo "Directory contents:"
           ls -la
-          echo "Checking for Makefile:"
-          find . -name "Makefile" -type f
-          echo "Available make targets:"
-          make help || true
 
       - name: Add custom repositories
         run: |
