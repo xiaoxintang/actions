@@ -12,42 +12,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Download ImageBuilder
+        run: |
+          # 获取最新的 imagebuilder
+          LATEST_URL=$(curl -s https://downloads.immortalwrt.org/snapshots/targets/rockchip/armv8/ | grep -o 'immortalwrt-imagebuilder-[^"]*\.tar\.xz' | sort -V | tail -n1)
+          wget https://downloads.immortalwrt.org/snapshots/targets/rockchip/armv8/$LATEST_URL
+          tar xf $LATEST_URL
+          cd $(basename $LATEST_URL .tar.xz)
+
+      - name: Add custom repositories
+        run: |
+          echo "src-git ssrplus https://github.com/fw876/helloworld.git" >> repositories.conf
+          echo "src-git homebox https://github.com/immortalwrt/luci.git" >> repositories.conf
 
       - name: Build firmware
         run: |
-          git clone https://github.com/immortalwrt/immortalwrt.git
-          cd immortalwrt
-          git checkout master
-          
-          # 添加自定义软件包
-          echo "src-git ssrplus https://github.com/fw876/helloworld.git" >> feeds.conf.default
-          echo "src-git homebox https://github.com/immortalwrt/luci.git" >> feeds.conf.default
-          
-          # 更新 feeds
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
-          
-          # 配置构建选项
-          cat > .config << EOF
-          CONFIG_TARGET_rockchip=y
-          CONFIG_TARGET_rockchip_armv8=y
-          CONFIG_TARGET_rockchip_armv8_DEVICE_friendlyarm_nanopi-r4s=y
-          CONFIG_PACKAGE_luci-app-ssr-plus=y
-          CONFIG_PACKAGE_luci-app-homebox=y
-          EOF
-          
-          # 开始构建
-          make -j$(nproc) V=s
+          make image PROFILE="friendlyarm_nanopi-r4s" \
+            PACKAGES="luci-app-ssr-plus luci-app-homebox" \
+            FILES="files/" \
+            EXTRA_IMAGE_NAME="$(date +'%Y%m%d')"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: firmware
           path: |
-            immortalwrt/bin/targets/rockchip/armv8/*.img.gz
-            immortalwrt/bin/targets/rockchip/armv8/*.img
+            */bin/targets/rockchip/armv8/*.img.gz
+            */bin/targets/rockchip/armv8/*.img
 
       - name: Create Release
         id: create_release
@@ -66,6 +57,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./immortalwrt/bin/targets/rockchip/armv8/*.img.gz
+          asset_path: ./*/bin/targets/rockchip/armv8/*.img.gz
           asset_name: immortalwrt-r4s-$(date +'%Y%m%d').img.gz
           asset_content_type: application/octet-stream 
