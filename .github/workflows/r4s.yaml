@@ -16,9 +16,22 @@ jobs:
         run: |
           # 获取最新的 imagebuilder
           LATEST_URL=$(curl -s https://downloads.immortalwrt.org/snapshots/targets/rockchip/armv8/ | grep -o 'immortalwrt-imagebuilder-[^"]*\.tar\.xz' | sort -V | tail -n1)
-          wget https://downloads.immortalwrt.org/snapshots/targets/rockchip/armv8/$LATEST_URL
-          tar xf $LATEST_URL
-          cd $(basename $LATEST_URL .tar.xz)
+          if [ -z "$LATEST_URL" ]; then
+            echo "Failed to get latest imagebuilder URL"
+            exit 1
+          fi
+          echo "Downloading $LATEST_URL"
+          wget "https://downloads.immortalwrt.org/snapshots/targets/rockchip/armv8/$LATEST_URL"
+          if [ ! -f "$LATEST_URL" ]; then
+            echo "Failed to download imagebuilder"
+            exit 1
+          fi
+          tar xf "$LATEST_URL"
+          if [ $? -ne 0 ]; then
+            echo "Failed to extract imagebuilder"
+            exit 1
+          fi
+          cd "$(basename "$LATEST_URL" .tar.xz)"
 
       - name: Add custom repositories
         run: |
