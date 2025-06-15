@@ -41,7 +41,8 @@ jobs:
 
       - name: Build firmware
         run: |
-          make image PROFILE="friendlyarm_nanopi-r4s" \
+          make -j$(nproc) \
+            PROFILE="friendlyarm_nanopi-r4s" \
             PACKAGES="luci-app-ssr-plus luci-app-homebox" \
             FILES="files/" \
             EXTRA_IMAGE_NAME="$(date +'%Y%m%d')"
