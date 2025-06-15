@@ -20,38 +20,14 @@ jobs:
       - name: Set up environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libncurses5-dev unzip gawk zlib1g-dev git curl
+          sudo apt-get install -y build-essential libncurses5-dev unzip gawk zlib1g-dev git
 
-      # 动态查找 Image Builder 下载链接
-      - name: Find Image Builder URL
-        id: find_imagebuilder
-        run: |
-          BASE_URL="https://downloads.immortalwrt.org"
-          RELEASE_PATH="/releases/24.10.0/targets/rockchip/armv8"
-          SNAPSHOT_PATH="/snapshots/targets/rockchip/armv8"
-          # 尝试查找 releases 目录中的 Image Builder
-          FILE=$(curl -s "$BASE_URL$RELEASE_PATH/" | grep -o 'immortalwrt-imagebuilder-24.10.0-rockchip-armv8.Linux-x86_64.tar.xz' | head -n 1)
-          if [ -n "$FILE" ]; then
-            echo "URL=$BASE_URL$RELEASE_PATH/$FILE" >> $GITHUB_ENV
-            echo "Found Image Builder in releases: $FILE"
-          else
-            # 回退到 snapshots 目录
-            FILE=$(curl -s "$BASE_URL$SNAPSHOT_PATH/" | grep -o 'immortalwrt-imagebuilder-[0-9].*rockchip-armv8.Linux-x86_64.tar.xz' | head -n 1)
-            if [ -n "$FILE" ]; then
-              echo "URL=$BASE_URL$SNAPSHOT_PATH/$FILE" >> $GITHUB_ENV
-              echo "Found Image Builder in snapshots: $FILE"
-            else
-              echo "No Image Builder found in releases or snapshots"
-              exit 1
-            fi
-          fi
-
-      # 下载 Image Builder
+      # 下载 ImmortalWrt Image Builder
       - name: Download Image Builder
         run: |
-          wget "${{ env.URL }}"
-          tar -Jxf *.tar.xz
-          mv immortalwrt-imagebuilder-* imagebuilder
+          wget https://downloads.immortalwrt.org/releases/24.10.1/targets/rockchip/armv8/immortalwrt-imagebuilder-24.10.1-rockchip-armv8.Linux-x86_64.tar.zst
+          tar -I zstd -xf immortalwrt-imagebuilder-24.10.1-rockchip-armv8.Linux-x86_64.tar.zst
+          mv immortalwrt-imagebuilder-24.10.1-rockchip-armv8.Linux-x86_64 imagebuilder
 
       # 配置软件包
       - name: Configure packages
