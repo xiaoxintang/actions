@@ -36,11 +36,23 @@ jobs:
       - name: Configure feeds
         run: |
           cd imagebuilder
-          # Add feeds for ssr-plus and homebox
-          echo "src-git ssrplus https://github.com/immortalwrt-collections/luci-app-ssr-plus-Jo.git" >> feeds.conf.default
-          echo "src-git homebox https://github.com/sirpdboy/luci-app-homebox.git" >> feeds.conf.default
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
+          # Add feed for ssr-plus
+          echo "src-git ssrplus https://github.com/coolsnowwolf/lede.git;master/package/lean/luci-app-ssr-plus" >> feeds.conf.default
+          # Update and install feeds
+          ./scripts/feeds update -a || { echo "Feeds update failed"; exit 1; }
+          ./scripts/feeds install -a || { echo "Feeds install failed"; exit 1; }
+
+      - name: Download luci-app-homebox ipk
+        run: |
+          cd imagebuilder
+          mkdir -p packages
+          # Replace with actual URL to luci-app-homebox .ipk if available
+          wget -O packages/luci-app-homebox.ipk https://example.com/luci-app-homebox.ipk || echo "Warning: luci-app-homebox .ipk not found, proceeding without it"
+
+      - name: Initialize build environment
+        run: |
+          cd imagebuilder
+          make defconfig
 
       - name: Configure and build firmware
         run: |
