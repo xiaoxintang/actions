@@ -1,0 +1,89 @@
+name: Compile V2Ray-core .so Files Weekly
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Run every Sunday at 00:00 UTC
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  compile-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Set up Go
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.20' # Use Go 1.20 or higher for V2Ray-core
+
+      # Install gomobile
+      - name: Install gomobile
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          gomobile init
+
+      # Set up Android NDK
+      - name: Set up Android NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r21e # Recommended NDK version for gomobile
+
+      # Clone V2Ray-core
+      - name: Clone V2Ray-core
+        run: |
+          git clone https://github.com/v2fly/v2ray-core.git
+          cd v2ray-core
+          git checkout v5 # Use the latest stable branch or tag
+
+      # Compile .so files for multiple architectures
+      - name: Compile .so files
+        run: |
+          mkdir -p output/jniLibs/arm64-v8a
+          mkdir -p output/jniLibs/armeabi-v7a
+          mkdir -p output/jniLibs/x86
+          mkdir -p output/jniLibs/x86_64
+          
+          # Compile for arm64-v8a
+          gomobile bind -o output/jniLibs/arm64-v8a/libv2ray.so -target=android/arm64 -androidapi=21 github.com/v2fly/v2ray-core/v5
+          
+          # Compile for armeabi-v7a
+          gomobile bind -o output/jniLibs/armeabi-v7a/libv2ray.so -target=android/arm -androidapi=21 github.com/v2fly/v2ray-core/v5
+          
+          # Compile for x86
+          gomobile bind -o output/jniLibs/x86/libv2ray.so -target=android/x86 -androidapi=21 github.com/v2fly/v2ray-core/v5
+          
+          # Compile for x86_64
+          gomobile bind -o output/jniLibs/x86_64/libv2ray.so -target=android/x86_64 -androidapi=21 github.com/v2fly/v2ray-core/v5
+
+      # Package .so files
+      - name: Package .so files
+        run: |
+          cd output
+          zip -r libv2ray_so.zip jniLibs
+
+      # Create GitHub Release
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: weekly-${{ github.run_id }} # Unique tag based on run ID
+          release_name: Weekly V2Ray .so Release ${{ github.run_id }}
+          draft: false
+          prerelease: false
+
+      # Upload .so zip to Release
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: output/libv2ray_so.zip
+          asset_name: libv2ray_so.zip
+          asset_content_type: application/zip
