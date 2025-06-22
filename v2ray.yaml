@@ -1,83 +1,78 @@
+```yaml
 name: Compile V2Ray-core .so Files Weekly
 
 on:
   schedule:
-    - cron: '0 0 * * 0' # Run every Sunday at 00:00 UTC
-  workflow_dispatch: # Allow manual triggering
+    - cron: '0 0 * * 0' # 每周日 00:00 UTC
+  workflow_dispatch:
 
 jobs:
   compile-and-release:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the repository
+      # 检出仓库
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Set up Go
+      # 设置 Go 1.23
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23' # Use Go 1.20 or higher for V2Ray-core
+          go-version: '1.23' # 使用 Go 1.23
 
-      # Install gomobile
+      # 安装 gomobile
       - name: Install gomobile
         run: |
           go install golang.org/x/mobile/cmd/gomobile@latest
           gomobile init
+        env:
+          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/21.4.7075529
 
-      # Set up Android NDK
+      # 设置 Android NDK
       - name: Set up Android NDK
         uses: nttld/setup-ndk@v1
         with:
-          ndk-version: r21e # Recommended NDK version for gomobile
+          ndk-version: r21e
 
-      # Clone V2Ray-core
+      # 克隆 V2Ray-core
       - name: Clone V2Ray-core
         run: |
           git clone https://github.com/v2fly/v2ray-core.git
           cd v2ray-core
-          git checkout v5 # Use the latest stable branch or tag
+          git checkout v5
 
-      # Compile .so files for multiple architectures
+      # 编译 .so 文件
       - name: Compile .so files
         run: |
           mkdir -p output/jniLibs/arm64-v8a
           mkdir -p output/jniLibs/armeabi-v7a
           mkdir -p output/jniLibs/x86
           mkdir -p output/jniLibs/x86_64
-          
-          # Compile for arm64-v8a
           gomobile bind -o output/jniLibs/arm64-v8a/libv2ray.so -target=android/arm64 -androidapi=21 github.com/v2fly/v2ray-core/v5
-          
-          # Compile for armeabi-v7a
           gomobile bind -o output/jniLibs/armeabi-v7a/libv2ray.so -target=android/arm -androidapi=21 github.com/v2fly/v2ray-core/v5
-          
-          # Compile for x86
           gomobile bind -o output/jniLibs/x86/libv2ray.so -target=android/x86 -androidapi=21 github.com/v2fly/v2ray-core/v5
-          
-          # Compile for x86_64
           gomobile bind -o output/jniLibs/x86_64/libv2ray.so -target=android/x86_64 -androidapi=21 github.com/v2fly/v2ray-core/v5
 
-      # Package .so files
+      # 打包 .so 文件
       - name: Package .so files
         run: |
           cd output
           zip -r libv2ray_so.zip jniLibs
 
-      # Create GitHub Release
+      # 创建 Release
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: weekly-${{ github.run_id }} # Unique tag based on run ID
+          tag_name: weekly-${{ github.run_id }}
           release_name: Weekly V2Ray .so Release ${{ github.run_id }}
           draft: false
           prerelease: false
 
-      # Upload .so zip to Release
+      # 上传 Release 资产
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
@@ -87,3 +82,4 @@ jobs:
           asset_path: output/libv2ray_so.zip
           asset_name: libv2ray_so.zip
           asset_content_type: application/zip
+```
