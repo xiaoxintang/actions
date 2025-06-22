@@ -19,7 +19,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23' # 使用 Go 1.23
+          go-version: '1.23.0' # 明确指定 Go 1.23.0
 
       # 安装 gomobile
       - name: Install gomobile
@@ -28,6 +28,8 @@ jobs:
           gomobile init
         env:
           ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/21.4.7075529
+          GO111MODULE: on
+          GOPROXY: https://proxy.golang.org,direct
 
       # 设置 Android NDK
       - name: Set up Android NDK
